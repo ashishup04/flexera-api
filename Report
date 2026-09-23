@@ -2,10 +2,20 @@
   <label>Flexera Unused Resources - Consolidated</label>
   <search id="base">
     <query>
-index=max_database source="AwsAPI" sourcetype="dynamodb-MMSUnusedResources" earliest=-24h
-| rename AccountID as accountid capture_date.S as capture_date resource_name.S as resource_name	resource_id.S as resource_id	resource_type.S as resource_type  retention_date.S as retention_date remediated_date.S as remediated_date action_type.S as action_type action_result.S as action_result Region as region auto_remediation.S as auto_remediation 	RuleName.S as rule_name retention_updated_by.S as updated_by retention_updated_date.S as updated_date resource_created_date.S as resource_created_date exclude.S as excluded_resource exclusion_updated_by.S as exclusion_updated_by exclusion_updated_date.S as exclusion_updated_date
+index=&lt;FLEXERA_INDEX&gt; sourcetype=&lt;FLEXERA_SOURCETYPE&gt; earliest=-24h
+| rename account_id as accountid meta_policy_name as rule_name tags as resource_tags incident_state as compliance_status
+| eval resource_id=if(isnull(resource_name) OR resource_name="", resource_id, resource_name)
+| eval resource_type=rule_name
+| eval capture_date=strftime(strptime(incident_created_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y")
+| eval timestamp=strftime(strptime(incident_updated_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y %H:%M:%S")
+| eval status=compliance_status
+| eval resource_created_date=if(isnotnull(launchTime), strftime(strptime(launchTime,"%Y-%m-%dT%H:%M:%S.%3NZ"),"%m-%d-%Y"), strftime(now()-tonumber(age)*86400,"%m-%d-%Y"))
+| eval resource_details=trim(if(isnotnull(codeSize),"codeSize=".codeSize." ","").if(isnotnull(memorySize),"memorySize=".memorySize." ","").if(isnotnull(runtime),"runtime=".runtime." ","").if(isnotnull(invocations),"invocations=".invocations." ","").if(isnotnull(size),"size=".size." ","").if(isnotnull(iops),"iops=".iops,""))
+| eval action_result="Success", action_type="Capture", auto_remediation="Captured", remediated_date="N/A", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
 | lookup all_aws_accounts.csv accountid OUTPUT accountalias
+| eval accountalias=coalesce(accountalias, account_name)
 | fillnull value="null"
+| fillnull value="null" excluded_resource updated_by updated_date exclusion_updated_by exclusion_updated_date
 | dedup accountid region resource_id
 | rename retention_date as schedule
 | eval remediation=if(auto_remediation="ON","AutoRemediation","ManualRemediation")
@@ -13,23 +23,9 @@ index=max_database source="AwsAPI" sourcetype="dynamodb-MMSUnusedResources" earl
 | eval remediation_schedule_date = if(remediation="ManualRemediation","NA",schedule)
 | eval remediated="No"
 | eval resource_name=if(resource_name="null","default",resource_name)
-| eval account_id=case(len(account_id)=10,"00"+account_id,len(account_id)=11,"0"+account_id,1=1,account_id)
-| table accountid accountalias region resource_type resource_id resource_name  action_type action_result excluded_resource capture_date remediation_schedule_date remediation auto_remediation countdown rule_name remediated updated_by updated_date resource_created_date exclusion_updated_by exclusion_updated_date
-| append [ | search
-index=max_database source="AwsAPI" sourcetype="dynamodb-MMSUnusedResources-Hist" earliest=-30d
-| rename AccountID as accountid capture_date.S as capture_date resource_name.S as resource_name	resource_id.S as resource_id	resource_type.S as resource_type  retention_date.S as retention_date remediated_date.S as remediated_date action_type.S as action_type action_result.S as action_result Region as region auto_remediation.S as auto_remediation RuleName.S as rule_name  
-| lookup all_aws_accounts.csv accountid OUTPUT accountalias
-| fillnull value="null"
-| dedup accountid region resource_id rule_name
-| rename retention_date as remediation_schedule_date
-| eval remediation=if(auto_remediation="ON","AutoRemediation","ManualRemediation")
-| eval countdown= round(( now()- strptime(remediated_date, "%m-%d-%Y"))/60/60/24, 0)
-| eval resource_name=if(resource_name="null","default",resource_name)
-| eval remediated="Yes"
-| eval account_id=case(len(account_id)=10,"00"+account_id,len(account_id)=11,"0"+account_id,1=1,account_id)
-| table accountid accountalias region rule_name resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation_schedule_date remediated_date remediation countdown  remediated updated_by updated_date]
+| eval accountid=case(len(accountid)=10,"00".accountid,len(accountid)=11,"0".accountid,1=1,accountid)
+| table accountid accountalias region resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation_schedule_date remediation auto_remediation countdown rule_name remediated remediated_date updated_by updated_date resource_created_date resource_created_by resource_status resource_details resource_tags compliance_status status timestamp exclusion_updated_by exclusion_updated_date
 | eval flag=case(remediated="No" and action_type="Capture","No", remediated="Yes" and action_type !="Capture","Yes",1=1,"null")
-```| eval flag=case(remediated="No" and action_type="Capture","No",remediated="Yes" and action_type IN ("ExtFixed","Remediated","BackInUse"),"Yes",1=1,"null")```
 ``` get the cost ```
 | lookup MMSUnusedResources-CostData.csv accountid region resource_id resource_type OUTPUT cost | eval cost=if(isnull(cost),0.00,cost)
 | eval excluded_resource=if(excluded_resource="null","No",excluded_resource)
