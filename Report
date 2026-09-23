@@ -1,8 +1,11 @@
+Here's the complete dashboard source in one block. In Splunk, open **Edit**, then **Source**, select all, paste this over it, and click **Save**.
+
+```xml
 <form version="1.1">
   <label>Flexera Unused Resources - Consolidated</label>
   <search id="base">
     <query>
-index=&lt;FLEXERA_INDEX&gt; sourcetype=&lt;FLEXERA_SOURCETYPE&gt; earliest=-24h
+index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
 | rename account_id as accountid meta_policy_name as rule_name tags as resource_tags incident_state as compliance_status
 | eval resource_id=if(isnull(resource_name) OR resource_name="", resource_id, resource_name)
 | eval resource_type=rule_name
@@ -1248,7 +1251,7 @@ To review unused resources remediation schedule use <a href="https://splunk.maxi
             <set token="tokResource_type">$row.resource_type$</set>
             <set token="tokResource_id">$row.resource_id$</set>
             <link target="_blank">
-              <![CDATA[ https://update-remediation-date.mmsunusedresources.maximus.com/index.html?account_id=$tokAccountid$&region=$tokRegion$&resource_ids=$tokResource_id$ ]]>
+              <![CDATA[ https://update-remediation-date.mmsunusedresources.maximus.com/index.html?account_id=$tokAccountid$&region=$tokRegion$&resource_type=$tokResource_type$ ]]>
             </link>
           </condition>
           <condition match="$click.name2$!=&quot;resource_type$&quot; or $click.name2$!=&quot;resource_id&quot;">cell.preventDefault();</condition>
@@ -1257,3 +1260,4 @@ To review unused resources remediation schedule use <a href="https://splunk.maxi
     </panel>
   </row>
 </form>
+```
