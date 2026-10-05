@@ -1,38 +1,34 @@
-Here's the complete dashboard source in one block. In Splunk, open **Edit**, then **Source**, select all, paste this over it, and click **Save**.
-
-```xml
 <form version="1.1">
   <label>Flexera Unused Resources - Consolidated</label>
   <search id="base">
     <query>
-index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
-| rename account_id as accountid meta_policy_name as rule_name tags as resource_tags incident_state as compliance_status
+index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings"
+| rename *.S as *, *.N as *, *.BOOL as *
+| rename account_id as accountid meta_policy_name as policy_name tags as resource_tags incident_state as compliance_status
 | eval resource_id=if(isnull(resource_name) OR resource_name="", resource_id, resource_name)
-| eval resource_type=rule_name
+| eval resource_type=policy_name
 | eval capture_date=strftime(strptime(incident_created_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y")
 | eval timestamp=strftime(strptime(incident_updated_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y %H:%M:%S")
+| eval compliance_status=case(compliance_status=="resolved","COMPLIANT", compliance_status=="triggered","NON_COMPLIANT", true(), compliance_status)
 | eval status=compliance_status
-| eval resource_created_date=if(isnotnull(launchTime), strftime(strptime(launchTime,"%Y-%m-%dT%H:%M:%S.%3NZ"),"%m-%d-%Y"), strftime(now()-tonumber(age)*86400,"%m-%d-%Y"))
+| eval resource_created_date=if(isnotnull(launchTime), strftime(strptime(launchTime,"%Y-%m-%dT%H:%M:%S.%3NZ"),"%m-%d-%Y"), if(isnotnull(age), strftime(now()-tonumber(age)*86400,"%m-%d-%Y"), "N/A"))
 | eval resource_details=trim(if(isnotnull(codeSize),"codeSize=".codeSize." ","").if(isnotnull(memorySize),"memorySize=".memorySize." ","").if(isnotnull(runtime),"runtime=".runtime." ","").if(isnotnull(invocations),"invocations=".invocations." ","").if(isnotnull(size),"size=".size." ","").if(isnotnull(iops),"iops=".iops,""))
-| eval action_result="Success", action_type="Capture", auto_remediation="Captured", remediated_date="N/A", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
-| lookup all_aws_accounts.csv accountid OUTPUT accountalias
-| eval accountalias=coalesce(accountalias, account_name)
+| eval action_result="Success", action_type="Capture", auto_remediation="Captured", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
+| eval accountalias=account_name
+| eval Account=account_name."_".accountid
+| eval cost=round(tonumber(coalesce(savings_usd,"0")),2)
 | fillnull value="null"
-| fillnull value="null" excluded_resource updated_by updated_date exclusion_updated_by exclusion_updated_date
-| dedup accountid region resource_id
+| fillnull value="null" excluded_resource
+| dedup accountid region resource_id policy_name
 | rename retention_date as schedule
 | eval remediation=if(auto_remediation="ON","AutoRemediation","ManualRemediation")
 | eval countdown = if(remediation="ManualRemediation",0, round((strptime(schedule, "%m-%d-%Y") - now())/60/60/24, 0))
-| eval remediation_schedule_date = if(remediation="ManualRemediation","NA",schedule)
 | eval remediated="No"
 | eval resource_name=if(resource_name="null","default",resource_name)
 | eval accountid=case(len(accountid)=10,"00".accountid,len(accountid)=11,"0".accountid,1=1,accountid)
-| table accountid accountalias region resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation_schedule_date remediation auto_remediation countdown rule_name remediated remediated_date updated_by updated_date resource_created_date resource_created_by resource_status resource_details resource_tags compliance_status status timestamp exclusion_updated_by exclusion_updated_date
-| eval flag=case(remediated="No" and action_type="Capture","No", remediated="Yes" and action_type !="Capture","Yes",1=1,"null")
-``` get the cost ```
-| lookup MMSUnusedResources-CostData.csv accountid region resource_id resource_type OUTPUT cost | eval cost=if(isnull(cost),0.00,cost)
 | eval excluded_resource=if(excluded_resource="null","No",excluded_resource)
-
+| eval flag=case(remediated="No" AND action_type="Capture","No", remediated="Yes" AND action_type!="Capture","Yes",1=1,"null")
+| table accountid accountalias Account region resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation auto_remediation countdown policy_name remediated resource_created_date resource_created_by resource_status resource_details resource_tags compliance_status status timestamp cost flag
     </query>
     <earliest>-24h</earliest>
     <latest>now</latest>
@@ -53,13 +49,11 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
       <fieldForLabel>Account</fieldForLabel>
       <fieldForValue>accountid</fieldForValue>
       <choice value="*">All</choice>
-      <search>
+      <search base="base">
         <query>
-| inputlookup MMSUnusedResources_module_lookup.csv
-| dedup AccountID
-| rename AccountID as accountid
-| eval Account=	AccountName+"_"+accountid
-| table accountid Account 
+| dedup accountid
+| table accountid Account
+| sort Account
         </query>
       </search>
       <default>*</default>
@@ -76,8 +70,8 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
       <default>*</default>
       <search base="base">
         <query>
-       		| dedup region
-      		| sort region
+          | dedup region
+          | sort region
         </query>
       </search>
       <delimiter>,</delimiter>
@@ -115,8 +109,8 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | fields resource_name
-      		| dedup resource_name
-      		| sort resource_name
+          | dedup resource_name
+          | sort resource_name
         </query>
       </search>
       <default>*</default>
@@ -145,10 +139,10 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
         <eval token="form.resource_id">if(mvcount('form.resource_id')=0,"*",if(mvcount('form.resource_id')!=1,mvfilter('form.resource_id'!="*"),'form.resource_id'))</eval>
       </change>
     </input>
-    <input type="multiselect" token="rule_name" searchWhenChanged="true">
-      <label>Rule</label>
-      <fieldForLabel>rule_name</fieldForLabel>
-      <fieldForValue>rule_name</fieldForValue>
+    <input type="multiselect" token="policy_name" searchWhenChanged="true">
+      <label>Policy</label>
+      <fieldForLabel>policy_name</fieldForLabel>
+      <fieldForValue>policy_name</fieldForValue>
       <search base="base">
         <query>
           | search accountid IN($accountid$)
@@ -156,14 +150,14 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
-          | dedup rule_name | table rule_name
+          | dedup policy_name | table policy_name
           </query>
       </search>
       <choice value="*">All</choice>
       <default>*</default>
       <delimiter>,</delimiter>
       <change>
-        <eval token="form.rule_name">if(mvcount('form.rule_name')=0,"*",if(mvcount('form.rule_name')!=1,mvfilter('form.rule_name'!="*"),'form.rule_name'))</eval>
+        <eval token="form.policy_name">if(mvcount('form.policy_name')=0,"*",if(mvcount('form.policy_name')!=1,mvfilter('form.policy_name'!="*"),'form.policy_name'))</eval>
       </change>
     </input>
     <input type="dropdown" token="remediation" searchWhenChanged="true">
@@ -180,7 +174,7 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
+          | search policy_name IN($policy_name$)
           | dedup remediation | table remediation
           </query>
       </search>
@@ -200,7 +194,7 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
+          | search policy_name IN($policy_name$)
           | dedup excluded_resource | table excluded_resource</query>
       </search>
       <choice value="*">All</choice>
@@ -237,65 +231,65 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
 
 #panel_instructure  {
         background-color: white;
-       
+
         text-align: left !important;
         max-width: 67% ! important;
         }
-        
+
 #panel_logo  {
         background-color: white;
-       
+
         text-align: center !important;
         font-weight: bold !important;
         max-width: 33% ! important;
         }
-        
+
 #panel_1 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
+
         }
-        
+
 #panel_2 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-     
+
         }
-        
+
 #panel_3 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-       
+
         }
-        
+
 #panel_4 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-      
+
         }
-        
+
 #panel_5 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
-        }  
+
+        }
 
 #panel_6 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
+
         }
 
 #panel_checkbox {
@@ -304,7 +298,7 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
        text-align: center !important;
        font-weight: bold !important;
            }
- 
+
 #panel_top_remedaited_by_account {
        max-width: 48% !important;
        height: 20px !important;
@@ -323,25 +317,25 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_remidiated_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_remidiated_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                
+
 #panel_checkbox1 {
        max-width: 4% ! important;
        height: 20px !important;
        text-align: center !important;
        font-weight: bold !important;
            }
-    
+
 #panel_top_remedaited_by_account {
        max-width: 48% !important;
        height: 20px !important;
@@ -360,13 +354,13 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_non_remidiated_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_non_remidiated_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
@@ -378,44 +372,44 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
        text-align: center !important;
        font-weight: bold !important;
            }
-    
+
 #panel_savings_by_account {
        max-width: 48% !important;
        height: 20px !important;
        text-align: center !important;
-      
+
                    }
 
 #panel_savings_by_role {
        max-width: 48% !important;
        height: 20px !important;
        text-align: center !important;
-      
+
                    }
 
 #panel_empty2  {
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_savings_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_savings_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                
+
 #panel_checkbox3 {
        max-width: 4% ! important;
        height: 20px !important;
        text-align: center !important;
        font-weight: bold !important;
            }
-    
+
 #panel_top_excluded_by_account {
        max-width: 48% !important;
        height: 20px !important;
@@ -434,13 +428,13 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_excluded_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_excluded_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
@@ -449,7 +443,7 @@ index=* "FlexeraUnusedResources-Corporate*" earliest=-24h
 .results-table .wrapped-results td {
             color: black !important;
           }
-        
+
 #tagHelp{
 width: 100% !important;
 }
@@ -463,7 +457,7 @@ border-collapse: collapse;
               width: 35px !important;
               overflow-wrap: anywhere !important;
           }
-          
+
 #tableWithFixedColumnWidth th:nth-child(3),
 #tableWithFixedColumnWidth td:nth-child(3)
 {
@@ -486,10 +480,10 @@ border-collapse: collapse;
 #tableWithFixedColumnWidth td:nth-child(11)
  {
               width: 50px !important;
-              
+
           }
 #tableWithFixedColumnWidth th:nth-child(2),
-#tableWithFixedColumnWidth td:nth-child(2), 
+#tableWithFixedColumnWidth td:nth-child(2),
 #tableWithFixedColumnWidth th:nth-child(7),
 #tableWithFixedColumnWidth td:nth-child(7),
 #tableWithFixedColumnWidth th:nth-child(12),
@@ -506,21 +500,21 @@ border-collapse: collapse;
      }
 #tableWithFixedColumnWidth td:nth-child(8) {
 white-space: nowrap !important;
-     }    
+     }
 
 
 #submit_checkbox0 button  {
         display: none;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 150px !important;  
-        height: 30px !important; 
-    } 
- 
+        text-decoration: none;
+        border: transparent;
+        width: 150px !important;
+        height: 30px !important;
+    }
+
 
 #instructures_checkbox  button{
           display: none;
@@ -529,25 +523,25 @@ white-space: nowrap !important;
 #instructures_checkbox label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 1 !important;
                 font-weight: bold;
    }
- 
-        
+
+
 #instructures_checkbox  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 90px !important;  
-        height: 30px !important; 
-    }      
+        text-decoration: none;
+        border: transparent;
+        width: 90px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox  button{
           display: none;
@@ -556,25 +550,25 @@ white-space: nowrap !important;
  #submit_checkbox label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
+
 #submit_checkbox  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox1  button{
           display: none;
@@ -583,25 +577,25 @@ white-space: nowrap !important;
  #submit_checkbox1 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
+
 #submit_checkbox1  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox2  button{
           display: none;
@@ -610,26 +604,26 @@ white-space: nowrap !important;
 #submit_checkbox2 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
+
 #submit_checkbox2  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
- 
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
 #submit_checkbox3  button{
           display: none;
         }
@@ -637,627 +631,34 @@ white-space: nowrap !important;
 #submit_checkbox3 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
+
 #submit_checkbox3  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
-    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
 .dashboard-panel h2.panel-title{
             text-align: left !important;
             font-size: 14px !important;
             font-weight: bold !important;
           }
-          
+
   </style>
   </html>
-      <html>
-    <div>
-To review unused resources remediation schedule use <a href="https://splunk.maximus.com/en-US/app/DBA-Prod/mms_unused_resources__live_countdown">AWS Unused Resources Live Action</a>  
-      </div>
-      </html>
     </panel>
     <panel id="panel_logo">
-      <html>        <center>
-          <img src="/static/app/performance_engineering_shared/aws_logo.png" width="150" height="150"/>
-        </center>
-      </html>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_1">
-      <single>
-        <title>Captured Unused Resources</title>
-        <search base="base">
-          <query>
-          | search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
-          | search excluded_resource IN($excluded_resource$)
-| search remediated="No"
-| stats dc(resource_id) as count
-
-</query>
-        </search>
-        <!-- Adjust height here -->
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="rangeColors">["0xdc4e41","0xdc4e41"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.size">large</option>
-        <option name="trellis.splitBy">_aggregation</option>
-        <option name="useColors">1</option>
-      </single>
-    </panel>
-    <panel id="panel_2">
-      <single>
-        <title>Remediated Unused Resources</title>
-        <search base="base">
-          <query>
-          | search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
-          | search remediation IN ($remediation$)
-          | search excluded_resource IN($excluded_resource$)
-| search remediated="Yes"
-| stats dc(resource_id) as count
-
-</query>
-        </search>
-        <option name="colorMode">none</option>
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="rangeColors">["0x118832","0x118832"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="useColors">1</option>
-      </single>
-    </panel>
-    <panel id="panel_3">
-      <single>
-        <title>Remediate Percent</title>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
-          | search remediation IN ($remediation$)
-          | search excluded_resource IN($excluded_resource$)
-| stats count(eval(remediated="No")) as captured_count count(eval(remediated="Yes")) as remidediated_count count as total
-| eval perCompliance=round(remidediated_count/total*100,2)
-| appendpipe [| makeresults | eval perCompliance=0 ]
-| stats sum(perCompliance) as sumPerCompliance</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="numberPrecision">0</option>
-        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="unit">%</option>
-        <option name="unitPosition">after</option>
-      </single>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_4">
-      <title></title>
-      <single>
-        <title>Estimated Potential Monthly Savings</title>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-          | search rule_name IN($rule_name$)
-          | search remediation IN ($remediation$)
-          | search excluded_resource IN($excluded_resource$)
-          | search action_type="capture"
-          | appendpipe [| makeresults | eval cost=0.00 ]
-          | stats sum(cost) as total</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="numberPrecision">0</option>
-        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="showSparkline">0</option>
-        <option name="showTrendIndicator">0</option>
-        <option name="unit">$</option>
-        <option name="unitPosition">before</option>
-        <option name="useColors">1</option>
-        <option name="useThousandSeparators">1</option>
-      </single>
-    </panel>
-    <panel id="panel_5">
-      <title></title>
-      <single>
-        <title>Estimated Realized Monthly Savings</title>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$)
-| search excluded_resource IN($excluded_resource$)
-```If the capture exists the cost will skip it```
-| eventstats  count(eval(action_type="Capture")) AS capture_flag by accountid region resource_id
-| where not capture_flag&gt;0
-| search action_type IN ("Remediated","ExtFixed")
-| appendpipe [| makeresults | eval cost=0.00 ]
-| stats sum(cost) as total</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="numberPrecision">0</option>
-        <option name="rangeColors">["0x118832","0x118832"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="showSparkline">0</option>
-        <option name="showTrendIndicator">0</option>
-        <option name="unit">$</option>
-        <option name="unitPosition">before</option>
-        <option name="useColors">1</option>
-        <option name="useThousandSeparators">1</option>
-      </single>
-    </panel>
-    <panel id="panel_6">
-      <single>
-        <title>Total Excluded Resource Cost</title>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| eval flag = if(excluded_resource="Yes", cost, 0)
-| appendpipe [| makeresults | eval flag=0.00 ]
-| stats sum(flag) as total</query>
-        </search>
-        <option name="drilldown">none</option>
-        <option name="height">50</option>
-        <option name="numberPrecision">0</option>
-        <option name="rangeColors">["0x118832","0x118832"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="showSparkline">0</option>
-        <option name="showTrendIndicator">0</option>
-        <option name="unit">$</option>
-        <option name="unitPosition">before</option>
-        <option name="useColors">0</option>
-        <option name="useThousandSeparators">1</option>
-      </single>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_checkbox">
-      <input id="submit_checkbox" type="checkbox" token="my_checkbox" searchWhenChanged="true">
-        <label></label>
-        <choice value="">+/-</choice>
-        <change>
-          <condition match="isnull($my_checkbox$)">
-            <unset token="myCheckboxValue"></unset>
-          </condition>
-          <condition>
-            <eval token="myCheckboxValue">"true"</eval>
-          </condition>
-        </change>
-        <delimiter> </delimiter>
-      </input>
-      <html/>
-    </panel>
-    <panel id="panel_top_non_remedaited_by_account">
-      <title>Top Non-Remediated by Account</title>
-      <html>    </html>
-    </panel>
-    <panel id="panel_top_non_remedaited_by_rule">
-      <title>Top Non-Remediated by Rule</title>
-      <html>    </html>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_empty0">
-      <html/>
-    </panel>
-    <panel id="panel_non_remedaited_by_account" depends="$myCheckboxValue$">
-      <title></title>
-      <table>
-        <search base="base">
-          <query>| search remediated="No"
-| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename accountalias as account
-| stats count by account
-| sort count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-    <panel id="panel_non_remedaited_by_rule" depends="$myCheckboxValue$">
-      <table>
-        <search base="base">
-          <query>| search remediated="No"
-| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$) 
-| search excluded_resource IN($excluded_resource$)
-| rename rule_name as rule
-| stats count by rule
-| sort by count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_checkbox1">
-      <input id="submit_checkbox1" type="checkbox" token="my_checkbox1" searchWhenChanged="true">
-        <label></label>
-        <choice value="">+/-</choice>
-        <change>
-          <condition match="isnull($my_checkbox1$)">
-            <unset token="myCheckboxValue1"></unset>
-          </condition>
-          <condition>
-            <eval token="myCheckboxValue1">"true"</eval>
-          </condition>
-        </change>
-        <delimiter> </delimiter>
-      </input>
-      <html/>
-    </panel>
-    <panel id="panel_top_remedaited_by_account">
-      <title>Top Remediated by Account</title>
-      <html>    </html>
-    </panel>
-    <panel id="panel_top_remedaited_by_rule">
-      <title>Top Remediated by Rule</title>
-      <html>    </html>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_empty1">
-      <html/>
-    </panel>
-    <panel id="panel_remedaited_by_account" depends="$myCheckboxValue1$">
-      <title></title>
-      <table>
-        <search base="base">
-          <query>| search remediated="Yes"
-| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename accountalias as account
-| stats count by account
-| sort count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-    <panel id="panel_remedaited_by_rule" depends="$myCheckboxValue1$">
-      <table>
-        <search base="base">
-          <query>| search remediated="Yes"
-| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN ($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename rule_name as rule
-| stats count by rule
-| sort by count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_checkbox2">
-      <input id="submit_checkbox2" type="checkbox" token="my_checkbox2" searchWhenChanged="true">
-        <label></label>
-        <choice value="">+/-</choice>
-        <change>
-          <condition match="isnull($my_checkbox2$)">
-            <unset token="myCheckboxValue2"></unset>
-          </condition>
-          <condition>
-            <eval token="myCheckboxValue2">"true"</eval>
-          </condition>
-        </change>
-        <delimiter> </delimiter>
-      </input>
-      <html/>
-    </panel>
-    <panel id="panel_top_savings_by_account">
-      <title>Total Estimated Potential Monthly Savings by Account</title>
-      <html>    </html>
-    </panel>
-    <panel id="panel_top_savings_by_rule">
-      <title>Total Estimated Potential Monthly Savings by Rule</title>
-      <html>    </html>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_empty2">
-      <html/>
-    </panel>
-    <panel id="panel_savings_by_account" depends="$myCheckboxValue2$">
-      <title></title>
-      <table>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename accountalias as account
-| stats sum(cost) as cost by account
-| sort cost desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-    <panel id="panel_savings_by_rule" depends="$myCheckboxValue2$">
-      <table>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename rule_name as rule
-| stats sum(cost) as cost by rule
-| sort cost desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_checkbox3">
-      <input id="submit_checkbox3" type="checkbox" token="my_checkbox3" searchWhenChanged="true">
-        <label></label>
-        <choice value="">+/-</choice>
-        <change>
-          <condition match="isnull($my_checkbox3$)">
-            <unset token="myCheckboxValue3"></unset>
-          </condition>
-          <condition>
-            <eval token="myCheckboxValue3">"true"</eval>
-          </condition>
-        </change>
-        <delimiter> </delimiter>
-      </input>
-      <html/>
-    </panel>
-    <panel id="panel_top_excluded_by_account">
-      <title>Top Excluded Resources by Account</title>
-      <html>    </html>
-    </panel>
-    <panel id="panel_top_excluded_by_rule">
-      <title>Top Excluded Resources by Rule</title>
-      <html>    </html>
-    </panel>
-  </row>
-  <row>
-    <panel id="panel_empty3">
-      <html/>
-    </panel>
-    <panel id="panel_excluded_by_account" depends="$myCheckboxValue3$">
-      <title></title>
-      <table>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN($remediation$)
-| search excluded_resource="Yes"
-| rename accountalias as account
-| stats count by account
-| sort count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-    <panel id="panel_excluded_by_rule" depends="$myCheckboxValue3$">
-      <table>
-        <search base="base">
-          <query>| search accountid IN($accountid$)
-| search region IN($region$)
-| search resource_type IN($resource_type$)
-| search resource_name IN($resource_name$)
-| search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN($remediation$)
-| search excluded_resource="Yes"
-| rename rule_name as rule
-| stats count by rule
-| sort count desc</query>
-        </search>
-        <option name="count">5</option>
-        <option name="drilldown">none</option>
-        <option name="totalsRow">true</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <table id="tableWithFixedColumnWidth">
-        <title>Life Actions - $cnt$ (rows)</title>
-        <search base="base">
-          <done>
-            <set token="cnt">$job.resultCount$</set>
-          </done>
-          <query>| search flag="$remediated$"
-          | search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-| search rule_name IN($rule_name$)
-| search remediation IN($remediation$)
-| search excluded_resource IN($excluded_resource$)
-| rename countdown as "countdown (days)" capture_date as result_recorded_date
-| table accountid accountalias region rule_name resource_type resource_id resource_name cost remediation action_type action_result excluded_resource resource_created_date result_recorded_date remediation_schedule_date remediated_date  updated_by updated_date exclusion_updated_by exclusion_updated_date      
-| eval cost=if(rule_name="MMSUnusedResourcesRuleIdleRDS" or rule_name="MMSUnusedResourcesRuleRDSOrphanSnapshots" or  rule_name="MMSUnusedResourcesRuleUnusedRedshiftSnapshots","Not Estimated",cost)</query>
-        </search>
-        <option name="count">10</option>
-        <option name="drilldown">cell</option>
-        <option name="refresh.display">progressbar</option>
-        <format type="number" field="cost">
-          <option name="precision">2</option>
-          <option name="unit">$</option>
-          <option name="unitPosition">before</option>
-          <option name="useThousandSeparators">true</option>
-        </format>
-        <drilldown>
-          <condition match="$click.name2$==&quot;resource_type&quot; and $click.value2$!=&quot;null&quot; and $row.region$!=&quot;null&quot; and $row.accountid$!=&quot;null&quot; and $row.resource_type$!=&quot;null&quot;">
-            <set token="tokRegion">$row.region$</set>
-            <set token="tokAccountid">$row.accountid$</set>
-            <set token="tokResource_type">$row.resource_type$</set>
-            <unset token="tokResource_id"></unset>
-            <link target="_blank">
-              <![CDATA[ https://update-remediation-date.mmsunusedresources.maximus.com/index.html?account_id=$tokAccountid$&region=$tokRegion$&resource_type=$tokResource_type$ ]]>
-            </link>
-          </condition>
-          <condition match="$click.name2$==&quot;resource_id&quot;and $click.value2$!=&quot;null&quot; and $row.region$!=&quot;null&quot; and $row.accountid$!=&quot;null&quot; and $row.resource_type$!=&quot;null&quot;">
-            <set token="tokRegion">$row.region$</set>
-            <set token="tokAccountid">$row.accountid$</set>
-            <set token="tokResource_type">$row.resource_type$</set>
-            <set token="tokResource_id">$row.resource_id$</set>
-            <link target="_blank">
-              <![CDATA[ https://update-remediation-date.mmsunusedresources.maximus.com/index.html?account_id=$tokAccountid$&region=$tokRegion$&resource_type=$tokResource_type$ ]]>
-            </link>
-          </condition>
-          <condition match="$click.name2$!=&quot;resource_type$&quot; or $click.name2$!=&quot;resource_id&quot;">cell.preventDefault();</condition>
-        </drilldown>
-      </table>
-    </panel>
-  </row>
-</form>
-```
+      <html>
