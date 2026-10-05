@@ -160,27 +160,6 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         <eval token="form.policy_name">if(mvcount('form.policy_name')=0,"*",if(mvcount('form.policy_name')!=1,mvfilter('form.policy_name'!="*"),'form.policy_name'))</eval>
       </change>
     </input>
-    <input type="dropdown" token="remediation" searchWhenChanged="true">
-      <label>Remediation</label>
-      <prefix>*</prefix>
-      <suffix>*</suffix>
-      <default>*</default>
-      <fieldForLabel>remediation</fieldForLabel>
-      <fieldForValue>remediation</fieldForValue>
-      <search base="base">
-        <query>
-          | search accountid IN($accountid$)
-          | search region IN($region$)
-          | search resource_type IN($resource_type$)
-          | search resource_name IN($resource_name$)
-          | search resource_id IN($resource_id$)
-          | search policy_name IN($policy_name$)
-          | dedup remediation | table remediation
-          </query>
-      </search>
-      <choice value="*">All</choice>
-      <initialValue>*</initialValue>
-    </input>
     <input type="dropdown" token="excluded_resource" searchWhenChanged="true">
       <label>Excluded Resources</label>
       <prefix>*</prefix>
@@ -708,7 +687,6 @@ white-space: nowrap !important;
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
           | search policy_name IN($policy_name$)
-          | search remediation IN ($remediation$)
           | search excluded_resource IN($excluded_resource$)
 | search remediated="Yes"
 | stats dc(resource_id) as count
@@ -734,7 +712,6 @@ white-space: nowrap !important;
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
           | search policy_name IN($policy_name$)
-          | search remediation IN ($remediation$)
           | search excluded_resource IN($excluded_resource$)
 | stats count(eval(remediated="No")) as captured_count count(eval(remediated="Yes")) as remidediated_count count as total
 | eval perCompliance=round(remidediated_count/total*100,2)
@@ -763,7 +740,6 @@ white-space: nowrap !important;
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
           | search policy_name IN($policy_name$)
-          | search remediation IN ($remediation$)
           | search excluded_resource IN($excluded_resource$)
           | search action_type="capture"
           | appendpipe [| makeresults | eval cost=0.00 ]
@@ -794,7 +770,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 ```If the capture exists the cost will skip it```
 | eventstats  count(eval(action_type="Capture")) AS capture_flag by accountid region resource_id
@@ -827,7 +802,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | eval flag = if(excluded_resource="Yes", cost, 0)
 | appendpipe [| makeresults | eval flag=0.00 ]
@@ -889,7 +863,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename accountalias as account
 | stats count by account
@@ -917,7 +890,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename policy_name as policy
 | stats count by policy
@@ -977,7 +949,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename accountalias as account
 | stats count by account
@@ -1005,7 +976,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN ($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename policy_name as policy
 | stats count by policy
@@ -1064,7 +1034,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename accountalias as account
 | stats sum(cost) as cost by account
@@ -1091,7 +1060,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename policy_name as policy
 | stats sum(cost) as cost by policy
@@ -1150,7 +1118,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN($remediation$)
 | search excluded_resource="Yes"
 | rename accountalias as account
 | stats count by account
@@ -1176,7 +1143,6 @@ white-space: nowrap !important;
 | search resource_name IN($resource_name$)
 | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN($remediation$)
 | search excluded_resource="Yes"
 | rename policy_name as policy
 | stats count by policy
@@ -1209,7 +1175,6 @@ white-space: nowrap !important;
           | search resource_name IN($resource_name$)
           | search resource_id IN($resource_id$)
 | search policy_name IN($policy_name$)
-| search remediation IN($remediation$)
 | search excluded_resource IN($excluded_resource$)
 | rename countdown as "countdown (days)" capture_date as result_recorded_date
 | table accountid accountalias region policy_name resource_type resource_id resource_name cost remediation action_type action_result excluded_resource resource_created_date result_recorded_date
@@ -1250,3 +1215,5 @@ white-space: nowrap !important;
   </row>
 </form>
 
+
+The same content is in `C:\Users\aupad\Dropbox\Ashish\Maximus Splunk\Flexera_Unused_Resources_Consolidated.xml` if the paste gets cut off.
