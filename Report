@@ -1,3 +1,4 @@
+```xml
 <form version="1.1">
   <label>Flexera Unused Resources - Consolidated</label>
   <init>
@@ -20,6 +21,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 | eval resource_created_date=if(isnotnull(launchTime), strftime(strptime(launchTime,"%Y-%m-%dT%H:%M:%S.%3NZ"),"%m-%d-%Y"), if(isnotnull(age), strftime(now()-tonumber(age)*86400,"%m-%d-%Y"), "N/A"))
 | eval resource_details=trim(if(isnotnull(codeSize),"codeSize=".codeSize." ","").if(isnotnull(memorySize),"memorySize=".memorySize." ","").if(isnotnull(runtime),"runtime=".runtime." ","").if(isnotnull(invocations),"invocations=".invocations." ","").if(isnotnull(size),"size=".size." ","").if(isnotnull(iops),"iops=".iops,""))
 | eval action_result="Success", action_type="Capture", auto_remediation="Captured", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
+| eval payer=coalesce(bill_source_friendly_name, billSourceFriendlyName, bill_source_name, bill_source, payer, "N/A")
+| eval cloud_vendor=coalesce(cloud_vendor, cloudVendor, vendor, "AWS")
 | eval accountalias=account_name
 | eval Account=account_name."_".accountid
 | eval cost=round(tonumber(coalesce(savings_usd,"0")),2)
@@ -34,7 +37,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 | eval accountid=case(len(accountid)=10,"00".accountid,len(accountid)=11,"0".accountid,1=1,accountid)
 | eval excluded_resource=if(excluded_resource="null","No",excluded_resource)
 | eval flag=case(remediated="No" AND action_type="Capture","No", remediated="Yes" AND action_type!="Capture","Yes",1=1,"null")
-| table accountid accountalias Account region resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation auto_remediation countdown policy_name remediated resource_created_date resource_created_by resource_status resource_details resource_tags compliance_status status timestamp cost flag
+| table accountid accountalias Account payer cloud_vendor region resource_type resource_id resource_name action_type action_result excluded_resource capture_date remediation auto_remediation countdown policy_name remediated resource_created_date resource_created_by resource_status resource_details resource_tags compliance_status status timestamp cost flag
     </query>
     <earliest>-24h</earliest>
     <latest>now</latest>
@@ -68,6 +71,40 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         <eval token="form.accountid">if(mvcount('form.accountid')=0,"*",if(mvcount('form.accountid')!=1,mvfilter('form.accountid'!="*"),'form.accountid'))</eval>
       </change>
     </input>
+    <input type="multiselect" token="payer" searchWhenChanged="true">
+      <label>Payer</label>
+      <fieldForLabel>payer</fieldForLabel>
+      <fieldForValue>payer</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <search base="base">
+        <query>
+          | dedup payer
+          | sort payer
+        </query>
+      </search>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.payer">if(mvcount('form.payer')=0,"*",if(mvcount('form.payer')!=1,mvfilter('form.payer'!="*"),'form.payer'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="cloud_vendor" searchWhenChanged="true">
+      <label>Cloud Vendor</label>
+      <fieldForLabel>cloud_vendor</fieldForLabel>
+      <fieldForValue>cloud_vendor</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <search base="base">
+        <query>
+          | dedup cloud_vendor
+          | sort cloud_vendor
+        </query>
+      </search>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.cloud_vendor">if(mvcount('form.cloud_vendor')=0,"*",if(mvcount('form.cloud_vendor')!=1,mvfilter('form.cloud_vendor'!="*"),'form.cloud_vendor'))</eval>
+      </change>
+    </input>
     <input type="multiselect" token="region" searchWhenChanged="true" id="multiselect_input_owner">
       <label>Region</label>
       <fieldForLabel>region</fieldForLabel>
@@ -76,8 +113,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <default>*</default>
       <search base="base">
         <query>
-       		| dedup region
-      		| sort region
+          | dedup region
+          | sort region
         </query>
       </search>
       <delimiter>,</delimiter>
@@ -93,6 +130,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <search base="base">
         <query>
         | search accountid IN($accountid$)
+        | search payer IN($payer$)
+        | search cloud_vendor IN($cloud_vendor$)
         | search region IN($region$)
         | dedup resource_type
         | sort resource_type
@@ -112,11 +151,13 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <search base="base">
         <query>
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | fields resource_name
-      		| dedup resource_name
-      		| sort resource_name
+          | dedup resource_name
+          | sort resource_name
         </query>
       </search>
       <default>*</default>
@@ -133,6 +174,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <search base="base">
         <query>
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -152,6 +195,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <search base="base">
         <query>
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -175,6 +220,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <fieldForValue>excluded_resource</fieldForValue>
       <search base="base">
         <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -202,11 +249,9 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         <change>
           <condition match="isnull($my_Instructures$)">
             <unset token="InstructureValue"></unset>
-            <!-- If tokUserName is null/empty, unset tokFilter -->
           </condition>
           <condition>
             <eval token="InstructureValue">"true"</eval>
-            <!-- If tokUserName has a value, set tokFilter -->
           </condition>
         </change>
         <delimiter> </delimiter>
@@ -216,65 +261,57 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 
 #panel_instructure  {
         background-color: white;
-       
         text-align: left !important;
         max-width: 67% ! important;
         }
-        
+
 #panel_logo  {
         background-color: white;
-       
         text-align: center !important;
         font-weight: bold !important;
         max-width: 33% ! important;
         }
-        
+
 #panel_1 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
         }
-        
+
 #panel_2 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-     
         }
-        
+
 #panel_3 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-       
         }
-        
+
 #panel_4 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-      
         }
-        
+
 #panel_5 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
-        }  
+        }
 
 #panel_6 {
         background-color: white;
         border: 1px dotted grey;
         text-align: center !important;
         font-weight: bold !important;
-        
         }
 
 #panel_checkbox {
@@ -283,7 +320,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
        text-align: center !important;
        font-weight: bold !important;
            }
- 
+
 #panel_top_remedaited_by_account {
        max-width: 48% !important;
        height: 20px !important;
@@ -302,50 +339,36 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_remidiated_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_remidiated_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                
+
 #panel_checkbox1 {
        max-width: 4% ! important;
        height: 20px !important;
        text-align: center !important;
        font-weight: bold !important;
            }
-    
-#panel_top_remedaited_by_account {
-       max-width: 48% !important;
-       height: 20px !important;
-       text-align: center !important;
-       font-weight: bold !important;
-                   }
-
-#panel_top_remedaited_by_role {
-       max-width: 48% !important;
-       height: 20px !important;
-       text-align: center !important;
-      font-weight: bold !important;
-                   }
 
 #panel_empty1  {
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_non_remidiated_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_non_remidiated_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
@@ -357,44 +380,36 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
        text-align: center !important;
        font-weight: bold !important;
            }
-    
+
 #panel_savings_by_account {
        max-width: 48% !important;
-       height: 20px !important;
        text-align: center !important;
-      
                    }
 
 #panel_savings_by_role {
        max-width: 48% !important;
        height: 20px !important;
        text-align: center !important;
-      
                    }
 
 #panel_empty2  {
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
-#panel_savings_by_account {
-       max-width: 48% !important;
-       text-align: center !important;
-                   }
-                   
 #panel_savings_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                
+
 #panel_checkbox3 {
        max-width: 4% ! important;
        height: 20px !important;
        text-align: center !important;
        font-weight: bold !important;
            }
-    
+
 #panel_top_excluded_by_account {
        max-width: 48% !important;
        height: 20px !important;
@@ -413,13 +428,13 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         max-width: 4% ! important;
         height: 20px !important;
         text-align: center !important;
-        } 
+        }
 
 #panel_excluded_by_account {
        max-width: 48% !important;
        text-align: center !important;
                    }
-                   
+
 #panel_excluded_by_rule  {
        max-width: 48% !important;
        text-align: center !important;
@@ -428,7 +443,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 .results-table .wrapped-results td {
             color: black !important;
           }
-        
+
 #tagHelp{
 width: 100% !important;
 }
@@ -449,55 +464,50 @@ border-collapse: collapse;
               padding: 4px 6px !important;
           }
 
-/* 1 accountid, 3 region, 8 cost, 10 action_type, 11 action_result, 12 excluded_resource */
 #tableWithFixedColumnWidth th:nth-child(1), #tableWithFixedColumnWidth td:nth-child(1),
-#tableWithFixedColumnWidth th:nth-child(3), #tableWithFixedColumnWidth td:nth-child(3),
-#tableWithFixedColumnWidth th:nth-child(8), #tableWithFixedColumnWidth td:nth-child(8),
+#tableWithFixedColumnWidth th:nth-child(4), #tableWithFixedColumnWidth td:nth-child(4),
+#tableWithFixedColumnWidth th:nth-child(5), #tableWithFixedColumnWidth td:nth-child(5),
 #tableWithFixedColumnWidth th:nth-child(10), #tableWithFixedColumnWidth td:nth-child(10),
-#tableWithFixedColumnWidth th:nth-child(11), #tableWithFixedColumnWidth td:nth-child(11),
-#tableWithFixedColumnWidth th:nth-child(12), #tableWithFixedColumnWidth td:nth-child(12) {
-              width: 5% !important;
-          }
-
-/* 9 remediation, 13 resource_created_date, 14 result_recorded_date */
-#tableWithFixedColumnWidth th:nth-child(9), #tableWithFixedColumnWidth td:nth-child(9),
+#tableWithFixedColumnWidth th:nth-child(12), #tableWithFixedColumnWidth td:nth-child(12),
 #tableWithFixedColumnWidth th:nth-child(13), #tableWithFixedColumnWidth td:nth-child(13),
 #tableWithFixedColumnWidth th:nth-child(14), #tableWithFixedColumnWidth td:nth-child(14) {
+              width: 4.5% !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(11), #tableWithFixedColumnWidth td:nth-child(11),
+#tableWithFixedColumnWidth th:nth-child(15), #tableWithFixedColumnWidth td:nth-child(15),
+#tableWithFixedColumnWidth th:nth-child(16), #tableWithFixedColumnWidth td:nth-child(16) {
               width: 6% !important;
           }
 
-/* 2 accountalias, 4 policy_name */
 #tableWithFixedColumnWidth th:nth-child(2), #tableWithFixedColumnWidth td:nth-child(2),
-#tableWithFixedColumnWidth th:nth-child(4), #tableWithFixedColumnWidth td:nth-child(4) {
-              width: 10% !important;
+#tableWithFixedColumnWidth th:nth-child(3), #tableWithFixedColumnWidth td:nth-child(3),
+#tableWithFixedColumnWidth th:nth-child(6), #tableWithFixedColumnWidth td:nth-child(6) {
+              width: 9% !important;
           }
 
-/* 5 resource_type, 6 resource_id, 7 resource_name */
-#tableWithFixedColumnWidth th:nth-child(5), #tableWithFixedColumnWidth td:nth-child(5),
-#tableWithFixedColumnWidth th:nth-child(6), #tableWithFixedColumnWidth td:nth-child(6),
-#tableWithFixedColumnWidth th:nth-child(7), #tableWithFixedColumnWidth td:nth-child(7) {
-              width: 10.67% !important;
+#tableWithFixedColumnWidth th:nth-child(7), #tableWithFixedColumnWidth td:nth-child(7),
+#tableWithFixedColumnWidth th:nth-child(8), #tableWithFixedColumnWidth td:nth-child(8),
+#tableWithFixedColumnWidth th:nth-child(9), #tableWithFixedColumnWidth td:nth-child(9) {
+              width: 8.17% !important;
           }
 
-#tableWithFixedColumnWidth td:nth-child(8) {
+#tableWithFixedColumnWidth td:nth-child(10) {
               white-space: nowrap !important;
               text-align: right !important;
      }
-    
-
 
 #submit_checkbox0 button  {
         display: none;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 150px !important;  
-        height: 30px !important; 
-    } 
- 
+        text-decoration: none;
+        border: transparent;
+        width: 150px !important;
+        height: 30px !important;
+    }
 
 #instructures_checkbox  button{
           display: none;
@@ -506,25 +516,24 @@ border-collapse: collapse;
 #instructures_checkbox label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 1 !important;
                 font-weight: bold;
    }
- 
-        
+
 #instructures_checkbox  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 90px !important;  
-        height: 30px !important; 
-    }      
+        text-decoration: none;
+        border: transparent;
+        width: 90px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox  button{
           display: none;
@@ -533,25 +542,24 @@ border-collapse: collapse;
  #submit_checkbox label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
 #submit_checkbox  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox1  button{
           display: none;
@@ -560,25 +568,24 @@ border-collapse: collapse;
  #submit_checkbox1 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
 #submit_checkbox1  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
 
 #submit_checkbox2  button{
           display: none;
@@ -587,26 +594,25 @@ border-collapse: collapse;
 #submit_checkbox2 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
 #submit_checkbox2  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
- 
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
 #submit_checkbox3  button{
           display: none;
         }
@@ -614,32 +620,31 @@ border-collapse: collapse;
 #submit_checkbox3 label {
                 color: white !important;
                 text-align: center;
-                text-decoration: none; 
-                width: 4% !important;  
-                height: 3% !important; 
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
                 line-height: 0.5 !important;
                 font-weight: bold;
    }
- 
-        
+
 #submit_checkbox3  {
         display: inline-block;
         background-color:#228B22 !important;
-        color: white !important; 
+        color: white !important;
         cursor: pointer;
         text-align: center;
-        text-decoration: none; 
-        border: transparent; 
-        width: 30px !important;  
-        height: 30px !important; 
-    }    
-    
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
 .dashboard-panel h2.panel-title{
             text-align: left !important;
             font-size: 14px !important;
             font-weight: bold !important;
           }
-          
+
   </style>
   </html>
     </panel>
@@ -657,6 +662,8 @@ border-collapse: collapse;
         <search base="base">
           <query>
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -668,7 +675,6 @@ border-collapse: collapse;
 
 </query>
         </search>
-        <!-- Adjust height here -->
         <option name="drilldown">none</option>
         <option name="height">50</option>
         <option name="rangeColors">["0xdc4e41","0xdc4e41"]</option>
@@ -686,6 +692,8 @@ border-collapse: collapse;
         <search base="base">
           <query>
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -711,6 +719,8 @@ border-collapse: collapse;
         <title>Remediate Percent</title>
         <search base="base">
           <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -739,6 +749,8 @@ border-collapse: collapse;
         <title>Estimated Potential Monthly Savings</title>
         <search base="base">
           <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -769,6 +781,8 @@ border-collapse: collapse;
         <title>Estimated Realized Monthly Savings</title>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -801,6 +815,8 @@ border-collapse: collapse;
         <title>Total Excluded Resource Cost</title>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -864,6 +880,8 @@ border-collapse: collapse;
         <search base="base">
           <query>| search remediated="No"
 | search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -891,6 +909,8 @@ border-collapse: collapse;
         <search base="base">
           <query>| search remediated="No"
 | search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -952,6 +972,8 @@ border-collapse: collapse;
         <search base="base">
           <query>| search remediated="Yes"
 | search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -979,6 +1001,8 @@ border-collapse: collapse;
         <search base="base">
           <query>| search remediated="Yes"
 | search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -1039,6 +1063,8 @@ border-collapse: collapse;
       <table>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -1065,6 +1091,8 @@ border-collapse: collapse;
       <table>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -1125,6 +1153,8 @@ border-collapse: collapse;
       <table>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -1150,6 +1180,8 @@ border-collapse: collapse;
       <table>
         <search base="base">
           <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
 | search region IN($region$)
 | search resource_type IN($resource_type$)
 | search resource_name IN($resource_name$)
@@ -1182,6 +1214,8 @@ border-collapse: collapse;
           </done>
           <query>| search flag="$remediated$"
           | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
           | search region IN($region$)
           | search resource_type IN($resource_type$)
           | search resource_name IN($resource_name$)
@@ -1189,7 +1223,7 @@ border-collapse: collapse;
 | search policy_name IN($policy_name$)
 | search excluded_resource IN($excluded_resource$)
 | rename countdown as "countdown (days)" capture_date as result_recorded_date
-| table accountid accountalias region policy_name resource_type resource_id resource_name cost remediation action_type action_result excluded_resource resource_created_date result_recorded_date
+| table accountid accountalias payer cloud_vendor region policy_name resource_type resource_id resource_name cost remediation action_type action_result excluded_resource resource_created_date result_recorded_date
 | eval cost=if(policy_name="MMSUnusedResourcesRuleIdleRDS" or policy_name="MMSUnusedResourcesRuleRDSOrphanSnapshots" or  policy_name="MMSUnusedResourcesRuleUnusedRedshiftSnapshots","Not Estimated",cost)</query>
         </search>
         <option name="count">10</option>
@@ -1205,3 +1239,4 @@ border-collapse: collapse;
     </panel>
   </row>
 </form>
+```
