@@ -18,3 +18,10 @@ attachmentStatus	2	2	[{"value":"i-01e78880c9291558d=attached","count":1},{"value
 availabilityZone	2	2	[{"value":"us-east-1b","count":1},{"value":"us-west-2b","count":1}]
 category	0	0	[]
 chartUrlField	29	29	[{"value":"i-00831d2cb90be779a Utilization Chart||https://api.image-charts-auth.flexeraeng.com/ic-function?
+
+
+| inputlookup all_aws_accounts.csv | head 5
+
+| inputlookup MMSUnusedResources_module_lookup.csv | head 5
+
+| rest /services/data/lookup-table-files | search title=*account* OR title=*aws* OR title=*org* OR title=*payer* OR title=*bill* | table title eai:appName
