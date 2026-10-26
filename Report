@@ -1,4 +1,3 @@
-```xml
 <form version="1.1">
   <label>Flexera Unused Resources - Consolidated</label>
   <init>
@@ -12,8 +11,9 @@
 index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings"
 | rename *.S as *, *.N as *, *.BOOL as *
 | rename account_id as accountid meta_policy_name as policy_name tags as resource_tags incident_state as compliance_status
-| eval resource_id=if(isnull(resource_name) OR resource_name="", resource_id, resource_name)
-| eval resource_type=policy_name
+| eval resource_id=coalesce(resource_id, resourceARN, id)
+| eval resource_name=coalesce(resource_name, hostname)
+| eval resource_type=coalesce(resourceType, newResourceType, service, type, policy_name)
 | eval capture_date=strftime(strptime(incident_created_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y")
 | eval timestamp=strftime(strptime(incident_updated_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y %H:%M:%S")
 | eval compliance_status=case(compliance_status=="resolved","COMPLIANT", compliance_status=="triggered","NON_COMPLIANT", true(), compliance_status)
@@ -21,7 +21,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 | eval resource_created_date=if(isnotnull(launchTime), strftime(strptime(launchTime,"%Y-%m-%dT%H:%M:%S.%3NZ"),"%m-%d-%Y"), if(isnotnull(age), strftime(now()-tonumber(age)*86400,"%m-%d-%Y"), "N/A"))
 | eval resource_details=trim(if(isnotnull(codeSize),"codeSize=".codeSize." ","").if(isnotnull(memorySize),"memorySize=".memorySize." ","").if(isnotnull(runtime),"runtime=".runtime." ","").if(isnotnull(invocations),"invocations=".invocations." ","").if(isnotnull(size),"size=".size." ","").if(isnotnull(iops),"iops=".iops,""))
 | eval action_result="Success", action_type="Capture", auto_remediation="Captured", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
-| eval payer=coalesce(bill_source_friendly_name, billSourceFriendlyName, bill_source_name, bill_source, payer, "N/A")
+| eval payer=case(AccountID="872515264824","Maximus Payer", true(), AccountID)
 | eval cloud_vendor=coalesce(cloud_vendor, cloudVendor, vendor, "AWS")
 | eval accountalias=account_name
 | eval Account=account_name."_".accountid
@@ -1239,4 +1239,3 @@ border-collapse: collapse;
     </panel>
   </row>
 </form>
-```
