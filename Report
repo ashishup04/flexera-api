@@ -13,7 +13,57 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 | rename account_id as accountid meta_policy_name as policy_name tags as resource_tags incident_state as compliance_status
 | eval resource_id=coalesce(resource_id, resourceARN, id)
 | eval resource_name=coalesce(resource_name, hostname)
-| eval resource_type=coalesce(resourceType, newResourceType, service, type, policy_name)
+| eval resource_id=case(
+    match(resource_id,"^arn:"), resource_id,
+    isnotnull(resourceARN) AND match(resourceARN,"^arn:"), resourceARN,
+    match(resource_id,"^snap-"), "arn:aws:ec2:".region.":".accountid.":snapshot/".resource_id,
+    match(resource_id,"^vol-"), "arn:aws:ec2:".region.":".accountid.":volume/".resource_id,
+    match(resource_id,"^i-"), "arn:aws:ec2:".region.":".accountid.":instance/".resource_id,
+    match(resource_id,"^eipalloc-"), "arn:aws:ec2:".region.":".accountid.":elastic-ip/".resource_id,
+    match(resource_id,"^ami-"), "arn:aws:ec2:".region."::image/".resource_id,
+    match(resource_id,"^nat-"), "arn:aws:ec2:".region.":".accountid.":natgateway/".resource_id,
+    match(resource_id,"^eni-"), "arn:aws:ec2:".region.":".accountid.":network-interface/".resource_id,
+    match(policy_name,"(?i)rds") AND match(policy_name,"(?i)snapshot"), "arn:aws:rds:".region.":".accountid.":snapshot:".resource_id,
+    match(policy_name,"(?i)rds"), "arn:aws:rds:".region.":".accountid.":db:".resource_id,
+    match(policy_name,"(?i)redshift") AND match(policy_name,"(?i)snapshot"), "arn:aws:redshift:".region.":".accountid.":snapshot:".resource_id,
+    match(policy_name,"(?i)redshift"), "arn:aws:redshift:".region.":".accountid.":cluster:".resource_id,
+    match(policy_name,"(?i)s3|bucket"), "arn:aws:s3:::".resource_id,
+    match(policy_name,"(?i)dynamodb"), "arn:aws:dynamodb:".region.":".accountid.":table/".resource_id,
+    match(policy_name,"(?i)cloudwatch|log"), "arn:aws:logs:".region.":".accountid.":log-group:".resource_id,
+    true(), resource_id)
+| eval resource_type=case(
+    match(resource_id,"^arn:aws:lambda:"), "Lambda Function",
+    match(resource_id,":snapshot/snap-"), "EBS Snapshot",
+    match(resource_id,":volume/vol-"), "EBS Volume",
+    match(resource_id,":instance/i-"), "EC2 Instance",
+    match(resource_id,":elastic-ip/"), "Elastic IP",
+    match(resource_id,"::image/ami-"), "AMI",
+    match(resource_id,":natgateway/"), "NAT Gateway",
+    match(resource_id,":network-interface/"), "Network Interface",
+    match(resource_id,"^arn:aws:rds:.*:snapshot:"), "RDS Snapshot",
+    match(resource_id,"^arn:aws:rds:.*:cluster:"), "RDS Cluster",
+    match(resource_id,"^arn:aws:rds:"), "RDS Instance",
+    match(resource_id,"^arn:aws:redshift:.*:snapshot:"), "Redshift Snapshot",
+    match(resource_id,"^arn:aws:redshift:"), "Redshift Cluster",
+    match(resource_id,"^arn:aws:s3:"), "S3 Bucket",
+    match(resource_id,"^arn:aws:dynamodb:"), "DynamoDB Table",
+    match(resource_id,"^arn:aws:logs:"), "CloudWatch Log Group",
+    match(resource_id,"^arn:aws:elasticloadbalancing:"), "Load Balancer",
+    match(resource_id,"^arn:aws:ecs:"), "ECS",
+    match(resource_id,"^arn:aws:eks:"), "EKS Cluster",
+    match(resource_id,"^arn:aws:elasticache:"), "ElastiCache",
+    match(resource_id,"^arn:aws:kinesis:"), "Kinesis Stream",
+    match(resource_id,"^arn:aws:sagemaker:"), "SageMaker",
+    match(resource_id,"^arn:aws:fsx:"), "FSx",
+    match(resource_id,"^arn:aws:efs:"), "EFS",
+    match(resource_id,"^arn:aws:backup:"), "Backup",
+    match(policy_name,"(?i)lambda"), "Lambda Function",
+    match(policy_name,"(?i)snapshot"), "EBS Snapshot",
+    match(policy_name,"(?i)volume"), "EBS Volume",
+    match(policy_name,"(?i)ec2|instance"), "EC2 Instance",
+    match(policy_name,"(?i)ip|address"), "Elastic IP",
+    match(policy_name,"(?i)image|ami"), "AMI",
+    true(), coalesce(service, resourceType, "Other"))
 | eval capture_date=strftime(strptime(incident_created_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y")
 | eval timestamp=strftime(strptime(incident_updated_at,"%Y-%m-%dT%H:%M:%SZ"),"%m-%d-%Y %H:%M:%S")
 | eval compliance_status=case(compliance_status=="resolved","COMPLIANT", compliance_status=="triggered","NON_COMPLIANT", true(), compliance_status)
