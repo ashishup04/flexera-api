@@ -8,7 +8,7 @@
   </init>
   <search id="base">
     <query>
-index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings"
+index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" (Table="FlexeraUnusedResources_Findings" OR (Table="FlexeraUnusedResources_Incidents" AND ("child_policy_name.S"="Azure*" OR "child_policy_name.S"="GCP*" OR "child_policy_name.S"="Google*")))
 | rename *.S as *, *.N as *, *.BOOL as *
 | rename meta_policy_name as policy_name tags as resource_tags incident_state as compliance_status
 | eval accountid=coalesce(account_id, subscription_id, subscriptionId, project_id, projectId)
@@ -35,6 +35,22 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
     match(policy_name,"(?i)cloudwatch|log"), "arn:aws:logs:".region.":".accountid.":log-group:".resource_id,
     true(), resource_id)
 | eval resource_type=case(
+    match(resource_id,"(?i)/virtualMachines/"), "Azure VM",
+    match(resource_id,"(?i)/databases/"), "Azure SQL Database",
+    match(resource_id,"(?i)/publicIPAddresses/"), "Azure Public IP",
+    match(resource_id,"(?i)/loadBalancers/"), "Azure Load Balancer",
+    match(resource_id,"(?i)/disks/"), "Azure Managed Disk",
+    match(resource_id,"(?i)/snapshots/"), "Azure Snapshot",
+    match(resource_id,"(?i)/storageAccounts/"), "Azure Storage Account",
+    match(resource_id,"(?i)/networkInterfaces/"), "Azure Network Interface",
+    match(child_policy_name,"(?i)^Azure.*Compute"), "Azure VM",
+    match(child_policy_name,"(?i)^Azure.*SQL"), "Azure SQL Database",
+    match(child_policy_name,"(?i)^Azure.*IP"), "Azure Public IP",
+    match(child_policy_name,"(?i)^Azure.*Load"), "Azure Load Balancer",
+    match(child_policy_name,"(?i)^Azure.*Disk"), "Azure Managed Disk",
+    match(child_policy_name,"(?i)^Azure.*Snapshot"), "Azure Snapshot",
+    match(child_policy_name,"(?i)^Azure.*Storage"), "Azure Storage Account",
+    match(child_policy_name,"(?i)^Azure"), "Azure ".coalesce(resourceType, service, "Resource"),
     match(resource_id,"^arn:aws:lambda:"), "Lambda Function",
     match(resource_id,":snapshot/snap-"), "EBS Snapshot",
     match(resource_id,":volume/vol-"), "EBS Volume",
