@@ -72,7 +72,14 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
 | eval resource_details=trim(if(isnotnull(codeSize),"codeSize=".codeSize." ","").if(isnotnull(memorySize),"memorySize=".memorySize." ","").if(isnotnull(runtime),"runtime=".runtime." ","").if(isnotnull(invocations),"invocations=".invocations." ","").if(isnotnull(size),"size=".size." ","").if(isnotnull(iops),"iops=".iops,""))
 | eval action_result="Success", action_type="Capture", auto_remediation="Captured", resource_created_by="N/A", resource_status="Available", retention_date="Not Available"
 | eval payer=case(AccountID="872515264824","Maximus Payer", true(), AccountID)
-| eval cloud_vendor=coalesce(cloud_vendor, cloudVendor, vendor, "AWS")
+| eval cloud_vendor=case(
+    match(child_policy_name,"(?i)^\s*AWS\b"), "AWS",
+    match(child_policy_name,"(?i)^\s*Azure\b"), "Azure",
+    match(child_policy_name,"(?i)^\s*(GCP|Google)\b"), "GCP",
+    match(policy_name,"(?i)AWS"), "AWS",
+    match(policy_name,"(?i)Azure"), "Azure",
+    match(policy_name,"(?i)GCP|Google"), "GCP",
+    true(), "Other")
 | eval accountalias=account_name
 | eval Account=account_name."_".accountid
 | eval cost=round(tonumber(coalesce(savings_usd,"0")),2)
