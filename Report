@@ -105,3 +105,1201 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
   <fieldset submitButton="false" autoRun="true">
     <input type="dropdown" token="remediated" searchWhenChanged="true">
       <label>Remediated</label>
+      <fieldForLabel>remediated</fieldForLabel>
+      <fieldForValue>remediated</fieldForValue>
+      <choice value="*">All</choice>
+      <choice value="Yes">Yes</choice>
+      <choice value="No">No</choice>
+      <default>No</default>
+      <initialValue>No</initialValue>
+    </input>
+    <input type="multiselect" token="accountid" searchWhenChanged="true">
+      <label>Account</label>
+      <fieldForLabel>Account</fieldForLabel>
+      <fieldForValue>accountid</fieldForValue>
+      <choice value="*">All</choice>
+      <search base="base">
+        <query>
+| dedup accountid
+| table accountid Account
+| sort Account
+        </query>
+      </search>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.accountid">if(mvcount('form.accountid')=0,"*",if(mvcount('form.accountid')!=1,mvfilter('form.accountid'!="*"),'form.accountid'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="payer" searchWhenChanged="true">
+      <label>Payer</label>
+      <fieldForLabel>payer</fieldForLabel>
+      <fieldForValue>payer</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <search base="base">
+        <query>
+          | dedup payer
+          | sort payer
+        </query>
+      </search>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.payer">if(mvcount('form.payer')=0,"*",if(mvcount('form.payer')!=1,mvfilter('form.payer'!="*"),'form.payer'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="cloud_vendor" searchWhenChanged="true">
+      <label>Cloud Vendor</label>
+      <fieldForLabel>cloud_vendor</fieldForLabel>
+      <fieldForValue>cloud_vendor</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <search base="base">
+        <query>
+          | dedup cloud_vendor
+          | sort cloud_vendor
+        </query>
+      </search>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.cloud_vendor">if(mvcount('form.cloud_vendor')=0,"*",if(mvcount('form.cloud_vendor')!=1,mvfilter('form.cloud_vendor'!="*"),'form.cloud_vendor'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="region" searchWhenChanged="true" id="multiselect_input_owner">
+      <label>Region</label>
+      <fieldForLabel>region</fieldForLabel>
+      <fieldForValue>region</fieldForValue>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <search base="base">
+        <query>
+          | dedup region
+          | sort region
+        </query>
+      </search>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.region">if(mvcount('form.region')=0,"*",if(mvcount('form.region')!=1,mvfilter('form.region'!="*"),'form.region'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="resource_type" searchWhenChanged="true" id="multiselect_input_insight">
+      <label>Resource Type</label>
+      <fieldForLabel>resource_type</fieldForLabel>
+      <fieldForValue>resource_type</fieldForValue>
+      <choice value="*">All</choice>
+      <search base="base">
+        <query>
+        | search accountid IN($accountid$)
+        | search payer IN($payer$)
+        | search cloud_vendor IN($cloud_vendor$)
+        | search region IN($region$)
+        | dedup resource_type
+        | sort resource_type
+        </query>
+      </search>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.resource_type">if(mvcount('form.resource_type')=0,"*",if(mvcount('form.resource_type')!=1,mvfilter('form.resource_type'!="*"),'form.resource_type'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="resource_name" searchWhenChanged="true" id="multiselect_input_action">
+      <label>Resource Name</label>
+      <fieldForLabel>resource_name</fieldForLabel>
+      <fieldForValue>resource_name</fieldForValue>
+      <choice value="*">All</choice>
+      <search base="base">
+        <query>
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | fields resource_name
+          | dedup resource_name
+          | sort resource_name
+        </query>
+      </search>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.resource_name">if(mvcount('form.resource_name')=0,"*",if(mvcount('form.resource_name')!=1,mvfilter('form.resource_name'!="*"),'form.resource_name'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="resource_id" searchWhenChanged="true" id="multiselect_input_namespace">
+      <label>Resource ID</label>
+      <fieldForLabel>resource_id</fieldForLabel>
+      <fieldForValue>resource_id</fieldForValue>
+      <choice value="*">All</choice>
+      <search base="base">
+        <query>
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | dedup resource_id
+          | sort resource_id</query>
+      </search>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.resource_id">if(mvcount('form.resource_id')=0,"*",if(mvcount('form.resource_id')!=1,mvfilter('form.resource_id'!="*"),'form.resource_id'))</eval>
+      </change>
+    </input>
+    <input type="multiselect" token="policy_name" searchWhenChanged="true">
+      <label>Policy</label>
+      <fieldForLabel>policy_name</fieldForLabel>
+      <fieldForValue>policy_name</fieldForValue>
+      <search base="base">
+        <query>
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | dedup policy_name | table policy_name
+          </query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <change>
+        <eval token="form.policy_name">if(mvcount('form.policy_name')=0,"*",if(mvcount('form.policy_name')!=1,mvfilter('form.policy_name'!="*"),'form.policy_name'))</eval>
+      </change>
+    </input>
+    <input type="dropdown" token="excluded_resource" searchWhenChanged="true">
+      <label>Excluded Resources</label>
+      <prefix>*</prefix>
+      <suffix>*</suffix>
+      <default>No</default>
+      <fieldForLabel>excluded_resource</fieldForLabel>
+      <fieldForValue>excluded_resource</fieldForValue>
+      <search base="base">
+        <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | search policy_name IN($policy_name$)
+          | dedup excluded_resource | table excluded_resource</query>
+      </search>
+      <choice value="*">All</choice>
+      <initialValue>No</initialValue>
+    </input>
+    <html>
+       <style>
+         div.fieldset.dashboard-form-globalfieldset div.dashboard-element.html.dashboard-element-html {
+        display: inline-block;
+           }
+       </style>
+       <a href="mms_unused_resources__consolidated_new" class="btn btn-primary">Reset</a>
+     </html>
+  </fieldset>
+  <row>
+    <panel id="panel_instructure">
+      <input id="instructures_checkbox" type="checkbox" token="my_Instructures" searchWhenChanged="false">
+        <label></label>
+        <choice value="">Instructions</choice>
+        <change>
+          <condition match="isnull($my_Instructures$)">
+            <unset token="InstructureValue"></unset>
+          </condition>
+          <condition>
+            <eval token="InstructureValue">"true"</eval>
+          </condition>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+      <html depends="$alwaysHideCSSPanel$">
+             <style type="text/css">
+
+#panel_instructure  {
+        background-color: white;
+        text-align: left !important;
+        max-width: 67% ! important;
+        }
+
+#panel_logo  {
+        background-color: white;
+        text-align: center !important;
+        font-weight: bold !important;
+        max-width: 33% ! important;
+        }
+
+#panel_1 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_2 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_3 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_4 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_5 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_6 {
+        background-color: white;
+        border: 1px dotted grey;
+        text-align: center !important;
+        font-weight: bold !important;
+        }
+
+#panel_checkbox {
+       max-width: 4% ! important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+           }
+
+#panel_top_remedaited_by_account {
+       max-width: 48% !important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+                   }
+
+#panel_top_remedaited_by_role {
+       max-width: 48% !important;
+       height: 20px !important;
+       text-align: center !important;
+      font-weight: bold !important;
+                   }
+
+#panel_empty0  {
+        max-width: 4% ! important;
+        height: 20px !important;
+        text-align: center !important;
+        }
+
+#panel_remidiated_by_account {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_remidiated_by_rule  {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_checkbox1 {
+       max-width: 4% ! important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+           }
+
+#panel_empty1  {
+        max-width: 4% ! important;
+        height: 20px !important;
+        text-align: center !important;
+        }
+
+#panel_non_remidiated_by_account {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_non_remidiated_by_rule  {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_checkbox2 {
+       max-width: 4% ! important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+           }
+
+#panel_savings_by_account {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_savings_by_role {
+       max-width: 48% !important;
+       height: 20px !important;
+       text-align: center !important;
+                   }
+
+#panel_empty2  {
+        max-width: 4% ! important;
+        height: 20px !important;
+        text-align: center !important;
+        }
+
+#panel_savings_by_rule  {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_checkbox3 {
+       max-width: 4% ! important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+           }
+
+#panel_top_excluded_by_account {
+       max-width: 48% !important;
+       height: 20px !important;
+       text-align: center !important;
+       font-weight: bold !important;
+                   }
+
+#panel_top_excluded_by_role {
+       max-width: 48% !important;
+       height: 20px !important;
+       text-align: center !important;
+      font-weight: bold !important;
+                   }
+
+#panel_empty3  {
+        max-width: 4% ! important;
+        height: 20px !important;
+        text-align: center !important;
+        }
+
+#panel_excluded_by_account {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+#panel_excluded_by_rule  {
+       max-width: 48% !important;
+       text-align: center !important;
+                   }
+
+.results-table .wrapped-results td {
+            color: black !important;
+          }
+
+#tagHelp{
+width: 100% !important;
+}
+
+table, th, td, tr {
+border-collapse: collapse;
+}
+
+#tableWithFixedColumnWidth table {
+              table-layout: fixed !important;
+              width: 100% !important;
+          }
+
+#tableWithFixedColumnWidth th,
+#tableWithFixedColumnWidth td {
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
+              padding: 4px 6px !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(1), #tableWithFixedColumnWidth td:nth-child(1),
+#tableWithFixedColumnWidth th:nth-child(4), #tableWithFixedColumnWidth td:nth-child(4),
+#tableWithFixedColumnWidth th:nth-child(5), #tableWithFixedColumnWidth td:nth-child(5),
+#tableWithFixedColumnWidth th:nth-child(11), #tableWithFixedColumnWidth td:nth-child(11),
+#tableWithFixedColumnWidth th:nth-child(13), #tableWithFixedColumnWidth td:nth-child(13),
+#tableWithFixedColumnWidth th:nth-child(14), #tableWithFixedColumnWidth td:nth-child(14),
+#tableWithFixedColumnWidth th:nth-child(15), #tableWithFixedColumnWidth td:nth-child(15) {
+              width: 4.5% !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(12), #tableWithFixedColumnWidth td:nth-child(12),
+#tableWithFixedColumnWidth th:nth-child(16), #tableWithFixedColumnWidth td:nth-child(16),
+#tableWithFixedColumnWidth th:nth-child(17), #tableWithFixedColumnWidth td:nth-child(17) {
+              width: 6% !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(2), #tableWithFixedColumnWidth td:nth-child(2),
+#tableWithFixedColumnWidth th:nth-child(3), #tableWithFixedColumnWidth td:nth-child(3) {
+              width: 9% !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(6), #tableWithFixedColumnWidth td:nth-child(6),
+#tableWithFixedColumnWidth th:nth-child(7), #tableWithFixedColumnWidth td:nth-child(7) {
+              width: 8% !important;
+          }
+
+#tableWithFixedColumnWidth th:nth-child(8), #tableWithFixedColumnWidth td:nth-child(8),
+#tableWithFixedColumnWidth th:nth-child(9), #tableWithFixedColumnWidth td:nth-child(9),
+#tableWithFixedColumnWidth th:nth-child(10), #tableWithFixedColumnWidth td:nth-child(10) {
+              width: 5.5% !important;
+          }
+
+#tableWithFixedColumnWidth td:nth-child(11) {
+              white-space: nowrap !important;
+              text-align: right !important;
+     }
+
+#submit_checkbox0 button  {
+        display: none;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 150px !important;
+        height: 30px !important;
+    }
+
+#instructures_checkbox  button{
+          display: none;
+        }
+
+#instructures_checkbox label {
+                color: white !important;
+                text-align: center;
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
+                line-height: 1 !important;
+                font-weight: bold;
+   }
+
+#instructures_checkbox  {
+        display: inline-block;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 90px !important;
+        height: 30px !important;
+    }
+
+#submit_checkbox  button{
+          display: none;
+        }
+
+ #submit_checkbox label {
+                color: white !important;
+                text-align: center;
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
+                line-height: 0.5 !important;
+                font-weight: bold;
+   }
+
+#submit_checkbox  {
+        display: inline-block;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+#submit_checkbox1  button{
+          display: none;
+        }
+
+ #submit_checkbox1 label {
+                color: white !important;
+                text-align: center;
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
+                line-height: 0.5 !important;
+                font-weight: bold;
+   }
+
+#submit_checkbox1  {
+        display: inline-block;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+#submit_checkbox2  button{
+          display: none;
+        }
+
+#submit_checkbox2 label {
+                color: white !important;
+                text-align: center;
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
+                line-height: 0.5 !important;
+                font-weight: bold;
+   }
+
+#submit_checkbox2  {
+        display: inline-block;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+#submit_checkbox3  button{
+          display: none;
+        }
+
+#submit_checkbox3 label {
+                color: white !important;
+                text-align: center;
+                text-decoration: none;
+                width: 4% !important;
+                height: 3% !important;
+                line-height: 0.5 !important;
+                font-weight: bold;
+   }
+
+#submit_checkbox3  {
+        display: inline-block;
+        background-color:#228B22 !important;
+        color: white !important;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        border: transparent;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+.dashboard-panel h2.panel-title{
+            text-align: left !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+          }
+
+  </style>
+  </html>
+    </panel>
+    <panel id="panel_logo">
+      <html>        <center>
+          <img src="/static/app/performance_engineering_shared/aws_logo.png" width="150" height="150"/>
+        </center>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_1">
+      <single>
+        <title>Captured Unused Resources</title>
+        <search base="base">
+          <query>
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | search policy_name IN($policy_name$)
+          | search excluded_resource IN($excluded_resource$)
+| search remediated="No"
+| stats dc(resource_id) as count
+
+</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0xdc4e41","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">large</option>
+        <option name="trellis.splitBy">_aggregation</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel id="panel_2">
+      <single>
+        <title>Remediated Unused Resources</title>
+        <search base="base">
+          <query>
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | search policy_name IN($policy_name$)
+          | search excluded_resource IN($excluded_resource$)
+| search remediated="Yes"
+| stats dc(resource_id) as count
+
+</query>
+        </search>
+        <option name="colorMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x118832","0x118832"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel id="panel_3">
+      <single>
+        <title>Remediate Percent</title>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | search policy_name IN($policy_name$)
+          | search excluded_resource IN($excluded_resource$)
+| stats count(eval(remediated="No")) as captured_count count(eval(remediated="Yes")) as remidediated_count count as total
+| eval perCompliance=round(remidediated_count/total*100,2)
+| appendpipe [| makeresults | eval perCompliance=0 ]
+| stats sum(perCompliance) as sumPerCompliance</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">%</option>
+        <option name="unitPosition">after</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_4">
+      <title></title>
+      <single>
+        <title>Estimated Potential Monthly Savings</title>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+          | search policy_name IN($policy_name$)
+          | search excluded_resource IN($excluded_resource$)
+          | search action_type="capture"
+          | appendpipe [| makeresults | eval cost=0.00 ]
+          | stats sum(cost) as total</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="unit">$</option>
+        <option name="unitPosition">before</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel id="panel_5">
+      <title></title>
+      <single>
+        <title>Estimated Realized Monthly Savings</title>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+```If the capture exists the cost will skip it```
+| eventstats  count(eval(action_type="Capture")) AS capture_flag by accountid region resource_id
+| where not capture_flag&gt;0
+| search action_type IN ("Remediated","ExtFixed")
+| appendpipe [| makeresults | eval cost=0.00 ]
+| stats sum(cost) as total</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x118832","0x118832"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="unit">$</option>
+        <option name="unitPosition">before</option>
+        <option name="useColors">1</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+    <panel id="panel_6">
+      <single>
+        <title>Total Excluded Resource Cost</title>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| eval flag = if(excluded_resource="Yes", cost, 0)
+| appendpipe [| makeresults | eval flag=0.00 ]
+| stats sum(flag) as total</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x118832","0x118832"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="showSparkline">0</option>
+        <option name="showTrendIndicator">0</option>
+        <option name="unit">$</option>
+        <option name="unitPosition">before</option>
+        <option name="useColors">0</option>
+        <option name="useThousandSeparators">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_checkbox">
+      <input id="submit_checkbox" type="checkbox" token="my_checkbox" searchWhenChanged="true">
+        <label></label>
+        <choice value="show">+/-</choice>
+        <default>show</default>
+        <initialValue>show</initialValue>
+        <change>
+          <condition match="isnull($my_checkbox$)">
+            <unset token="myCheckboxValue"></unset>
+          </condition>
+          <condition>
+            <eval token="myCheckboxValue">"true"</eval>
+          </condition>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+      <html/>
+    </panel>
+    <panel id="panel_top_non_remedaited_by_account">
+      <title>Top Non-Remediated by Account</title>
+      <html>    </html>
+    </panel>
+    <panel id="panel_top_non_remedaited_by_rule">
+      <title>Top Non-Remediated by Policy</title>
+      <html>    </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_empty0">
+      <html/>
+    </panel>
+    <panel id="panel_non_remedaited_by_account" depends="$myCheckboxValue$">
+      <title></title>
+      <table>
+        <search base="base">
+          <query>| search remediated="No"
+| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename accountalias as account
+| stats count by account
+| sort count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+    <panel id="panel_non_remedaited_by_rule" depends="$myCheckboxValue$">
+      <table>
+        <search base="base">
+          <query>| search remediated="No"
+| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename policy_name as policy
+| stats count by policy
+| sort by count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row depends="$showHiddenPanels$">
+    <panel id="panel_checkbox1">
+      <input id="submit_checkbox1" type="checkbox" token="my_checkbox1" searchWhenChanged="true">
+        <label></label>
+        <choice value="show">+/-</choice>
+        <default>show</default>
+        <initialValue>show</initialValue>
+        <change>
+          <condition match="isnull($my_checkbox1$)">
+            <unset token="myCheckboxValue1"></unset>
+          </condition>
+          <condition>
+            <eval token="myCheckboxValue1">"true"</eval>
+          </condition>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+      <html/>
+    </panel>
+    <panel id="panel_top_remedaited_by_account">
+      <title>Top Remediated by Account</title>
+      <html>    </html>
+    </panel>
+    <panel id="panel_top_remedaited_by_rule">
+      <title>Top Remediated by Policy</title>
+      <html>    </html>
+    </panel>
+  </row>
+  <row depends="$showHiddenPanels$">
+    <panel id="panel_empty1">
+      <html/>
+    </panel>
+    <panel id="panel_remedaited_by_account" depends="$myCheckboxValue1$">
+      <title></title>
+      <table>
+        <search base="base">
+          <query>| search remediated="Yes"
+| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename accountalias as account
+| stats count by account
+| sort count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+    <panel id="panel_remedaited_by_rule" depends="$myCheckboxValue1$">
+      <table>
+        <search base="base">
+          <query>| search remediated="Yes"
+| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename policy_name as policy
+| stats count by policy
+| sort by count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_checkbox2">
+      <input id="submit_checkbox2" type="checkbox" token="my_checkbox2" searchWhenChanged="true">
+        <label></label>
+        <choice value="show">+/-</choice>
+        <default>show</default>
+        <initialValue>show</initialValue>
+        <change>
+          <condition match="isnull($my_checkbox2$)">
+            <unset token="myCheckboxValue2"></unset>
+          </condition>
+          <condition>
+            <eval token="myCheckboxValue2">"true"</eval>
+          </condition>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+      <html/>
+    </panel>
+    <panel id="panel_top_savings_by_account">
+      <title>Total Estimated Potential Monthly Savings by Account</title>
+      <html>    </html>
+    </panel>
+    <panel id="panel_top_savings_by_rule">
+      <title>Total Estimated Potential Monthly Savings by Policy</title>
+      <html>    </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="panel_empty2">
+      <html/>
+    </panel>
+    <panel id="panel_savings_by_account" depends="$myCheckboxValue2$">
+      <title></title>
+      <table>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename accountalias as account
+| stats sum(cost) as cost by account
+| sort cost desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+    <panel id="panel_savings_by_rule" depends="$myCheckboxValue2$">
+      <table>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename policy_name as policy
+| stats sum(cost) as cost by policy
+| sort cost desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row depends="$showHiddenPanels$">
+    <panel id="panel_checkbox3">
+      <input id="submit_checkbox3" type="checkbox" token="my_checkbox3" searchWhenChanged="true">
+        <label></label>
+        <choice value="show">+/-</choice>
+        <default>show</default>
+        <initialValue>show</initialValue>
+        <change>
+          <condition match="isnull($my_checkbox3$)">
+            <unset token="myCheckboxValue3"></unset>
+          </condition>
+          <condition>
+            <eval token="myCheckboxValue3">"true"</eval>
+          </condition>
+        </change>
+        <delimiter> </delimiter>
+      </input>
+      <html/>
+    </panel>
+    <panel id="panel_top_excluded_by_account">
+      <title>Top Excluded Resources by Account</title>
+      <html>    </html>
+    </panel>
+    <panel id="panel_top_excluded_by_rule">
+      <title>Top Excluded Resources by Policy</title>
+      <html>    </html>
+    </panel>
+  </row>
+  <row depends="$showHiddenPanels$">
+    <panel id="panel_empty3">
+      <html/>
+    </panel>
+    <panel id="panel_excluded_by_account" depends="$myCheckboxValue3$">
+      <title></title>
+      <table>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource="Yes"
+| rename accountalias as account
+| stats count by account
+| sort count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+    <panel id="panel_excluded_by_rule" depends="$myCheckboxValue3$">
+      <table>
+        <search base="base">
+          <query>| search accountid IN($accountid$)
+| search payer IN($payer$)
+| search cloud_vendor IN($cloud_vendor$)
+| search region IN($region$)
+| search resource_type IN($resource_type$)
+| search resource_name IN($resource_name$)
+| search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource="Yes"
+| rename policy_name as policy
+| stats count by policy
+| sort count desc</query>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="totalsRow">true</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table id="tableWithFixedColumnWidth">
+        <title>Total - $cnt$ (rows)</title>
+        <search base="base">
+          <done>
+            <set token="cnt">$job.resultCount$</set>
+          </done>
+          <query>| search flag="$remediated$"
+          | search accountid IN($accountid$)
+          | search payer IN($payer$)
+          | search cloud_vendor IN($cloud_vendor$)
+          | search region IN($region$)
+          | search resource_type IN($resource_type$)
+          | search resource_name IN($resource_name$)
+          | search resource_id IN($resource_id$)
+| search policy_name IN($policy_name$)
+| search excluded_resource IN($excluded_resource$)
+| rename countdown as "countdown (days)" capture_date as result_recorded_date
+| table accountid accountalias payer cloud_vendor region policy_name child_policy_name resource_type resource_id resource_name cost remediation action_type action_result excluded_resource resource_created_date result_recorded_date
+| eval cost=if(policy_name="MMSUnusedResourcesRuleIdleRDS" or policy_name="MMSUnusedResourcesRuleRDSOrphanSnapshots" or  policy_name="MMSUnusedResourcesRuleUnusedRedshiftSnapshots","Not Estimated",cost)</query>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="cost">
+          <option name="precision">2</option>
+          <option name="unit">$</option>
+          <option name="unitPosition">before</option>
+          <option name="useThousandSeparators">true</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
