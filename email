@@ -1,0 +1,7 @@
+index=max_database source=AwsAPI Table=MMSUnusedResources | search action_type.S=Capture 
+| rename AccountID as accountid resource_type.S as resource_type auto_remediation.S as auto_remediation exclude.S as exclude
+| stats count(eval(auto_remediation=="ON")) as auto_remediation,count(eval(auto_remediation=="OFF")) as manual_remediation,count(eval(exclude=="Yes")) as excluded_resources, latest(_time) as event_time
+by accountid resource_type
+``` Added a new logic at 3/13/2026```
+| eval manual_remediation=if((excluded_resources>0 and manual_remediation>0) ,manual_remediation-excluded_resources,manual_remediation)
+| eval auto_remediation=if  ((excluded_resources>0 and auto_remediation>0) ,auto_remediation-excluded_resources,auto_remediation)
