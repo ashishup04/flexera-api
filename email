@@ -1,5 +1,9 @@
-index=max_database source=AwsAPI Table=MMSUnusedResources | search action_type.S=Capture 
-| rename AccountID as accountid resource_type.S as resource_type auto_remediation.S as auto_remediation exclude.S as exclude
+index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings"
+| rename *.S as *, *.N as *, *.BOOL as *
+| dedup account_id region resource_id meta_policy_name
+| rename account_id as accountid meta_policy_name as resource_type
+| eval accountid=case(len(accountid)=10,"00".accountid,len(accountid)=11,"0".accountid,1=1,accountid)
+| eval action_type="Capture", auto_remediation="OFF", exclude="No"
 | stats count(eval(auto_remediation=="ON")) as auto_remediation,count(eval(auto_remediation=="OFF")) as manual_remediation,count(eval(exclude=="Yes")) as excluded_resources, latest(_time) as event_time
 by accountid resource_type
 ``` Added a new logic at 3/13/2026```
