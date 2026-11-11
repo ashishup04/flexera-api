@@ -1,6 +1,4 @@
-index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings" "meta_policy_name.S"="*Azure*" earliest=-24h
+index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" "child_policy_name.S"="Azure*" earliest=-24h
 | rename *.S as *, *.N as *, *.BOOL as *
-| fieldsummary maxvals=3
-| where count>0
-| table field count distinct_count values
-| sort field
+| stats sum(eval(if(Table="FlexeraUnusedResources_Incidents",tonumber(violation_data_count),0))) as reported_in_incident sum(eval(if(Table="FlexeraUnusedResources_Findings",1,0))) as rows_in_findings by child_policy_name
+| eval missing=reported_in_incident-rows_in_findings
