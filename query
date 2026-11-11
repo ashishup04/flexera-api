@@ -1,4 +1,4 @@
-index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Incidents" "child_policy_name.S"="Azure*" earliest=-24h
+index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" Table="FlexeraUnusedResources_Findings" "meta_policy_name.S"="*Azure*" earliest=-24h
 | rename *.S as *, *.N as *, *.BOOL as *
 | fieldsummary maxvals=3
 | where count>0
