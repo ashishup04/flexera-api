@@ -130,8 +130,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <choice value="*">All</choice>
       <choice value="Yes">Yes</choice>
       <choice value="No">No</choice>
-      <default>No</default>
-      <initialValue>No</initialValue>
+      <default>*</default>
+      <initialValue>*</initialValue>
     </input>
     <input type="multiselect" token="accountid" searchWhenChanged="true">
       <label>Account</label>
@@ -158,7 +158,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <fieldForLabel>payer</fieldForLabel>
       <fieldForValue>payer</fieldForValue>
       <choice value="*">All</choice>
-      <default>*</default>
+      <default>Corporate</default>
       <search base="base">
         <query>
           | dedup payer
@@ -177,7 +177,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       <fieldForLabel>cloud_vendor</fieldForLabel>
       <fieldForValue>cloud_vendor</fieldForValue>
       <choice value="*">All</choice>
-      <default>*</default>
+      <default>AWS</default>
       <search base="base">
         <query>
           | dedup cloud_vendor
@@ -334,7 +334,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         display: inline-block;
            }
        </style>
-       <a href="mms_unused_resources__consolidated_new" class="btn btn-primary">Reset</a>
+       <a href="flexera_-_unused_resources_-_consolidated" class="btn btn-primary">Reset</a>
      </html>
   </fieldset>
   <row>
