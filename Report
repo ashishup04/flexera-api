@@ -102,6 +102,7 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
     match(policy_name,"(?i)Azure"), "Azure",
     match(policy_name,"(?i)GCP|Google"), "GCP",
     true(), "Other")
+| eval region=case(cloud_vendor="Azure","Azure ".region, cloud_vendor="AWS","AWS ".region, cloud_vendor="GCP","GCP ".region, true(), region)
 | eval accountalias=account_name
 | eval Account=account_name."_".accountid
 | eval cost=round(tonumber(coalesce(savings_usd,"0")),2)
@@ -145,6 +146,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         </query>
       </search>
       <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.accountid">if(mvcount('form.accountid')=0,"*",if(mvcount('form.accountid')!=1,mvfilter('form.accountid'!="*"),'form.accountid'))</eval>
@@ -162,6 +165,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
           | sort payer
         </query>
       </search>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.payer">if(mvcount('form.payer')=0,"*",if(mvcount('form.payer')!=1,mvfilter('form.payer'!="*"),'form.payer'))</eval>
@@ -179,6 +184,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
           | sort cloud_vendor
         </query>
       </search>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.cloud_vendor">if(mvcount('form.cloud_vendor')=0,"*",if(mvcount('form.cloud_vendor')!=1,mvfilter('form.cloud_vendor'!="*"),'form.cloud_vendor'))</eval>
@@ -196,6 +203,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
           | sort region
         </query>
       </search>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.region">if(mvcount('form.region')=0,"*",if(mvcount('form.region')!=1,mvfilter('form.region'!="*"),'form.region'))</eval>
@@ -217,6 +226,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         </query>
       </search>
       <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.resource_type">if(mvcount('form.resource_type')=0,"*",if(mvcount('form.resource_type')!=1,mvfilter('form.resource_type'!="*"),'form.resource_type'))</eval>
@@ -240,6 +251,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
         </query>
       </search>
       <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.resource_name">if(mvcount('form.resource_name')=0,"*",if(mvcount('form.resource_name')!=1,mvfilter('form.resource_name'!="*"),'form.resource_name'))</eval>
@@ -262,6 +275,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
           | sort resource_id</query>
       </search>
       <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.resource_id">if(mvcount('form.resource_id')=0,"*",if(mvcount('form.resource_id')!=1,mvfilter('form.resource_id'!="*"),'form.resource_id'))</eval>
@@ -285,6 +300,8 @@ index=max_database source=AwsAPI sourcetype="dynamodb-FlexeraUnusedResources_*" 
       </search>
       <choice value="*">All</choice>
       <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
       <delimiter>,</delimiter>
       <change>
         <eval token="form.policy_name">if(mvcount('form.policy_name')=0,"*",if(mvcount('form.policy_name')!=1,mvfilter('form.policy_name'!="*"),'form.policy_name'))</eval>
